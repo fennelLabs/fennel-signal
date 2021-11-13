@@ -18,7 +18,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
-	#[pallet::getter(fn key)]
+	#[pallet::getter(fn get_issued_key)]
 	pub type IssuedKeys<T: Config> = StorageDoubleMap<_, Blake2_128Concat, T::AccountId, Blake2_128Concat, Vec<u8>, Vec<u8>>;
 
 	#[pallet::event]
@@ -37,23 +37,25 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Allows an account `origin` to announce a key with `fingerprint` hosted at `location`
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
-		pub fn issue_key(origin: OriginFor<T>, fingerprint: Vec<u8>, hash: Vec<u8>) -> DispatchResult {
+		pub fn issue_key(origin: OriginFor<T>, fingerprint: Vec<u8>, location: Vec<u8>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			<IssuedKeys<T>>::insert(&who, &fingerprint, hash);
+			<IssuedKeys<T>>::insert(&who, &fingerprint, location);
 
 			Self::deposit_event(Event::KeyIssued(fingerprint, who));
 			Ok(())
 		}
 
+		/// Announces that `origin`'s key `fingerprint` has been revoked
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
-		pub fn revoke_key(origin: OriginFor<T>, key_index: Vec<u8>) -> DispatchResult {
+		pub fn revoke_key(origin: OriginFor<T>, fingerprint: Vec<u8>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			<IssuedKeys<T>>::remove(&who, &key_index);
+			<IssuedKeys<T>>::remove(&who, &fingerprint);
 
-			Self::deposit_event(Event::KeyRevoked(key_index, who));
+			Self::deposit_event(Event::KeyRevoked(fingerprint, who));
 			Ok(())
 		}
 	}
